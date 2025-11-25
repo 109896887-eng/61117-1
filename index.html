@@ -3,300 +3,766 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>寵物養成遊戲</title>
+    <title>進化版寵物養成 - 雲端小夥伴</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            overscroll-behavior: none; /* 防止手機下拉刷新 */
         }
-        .game-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
-        .progress-bar { width: 100%; height: 12px; background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out; border-radius: 9999px; }
-        .action-button { transition: transform 0.1s ease-in-out, background-color 0.3s ease-in-out, opacity 0.3s; user-select: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
-        .action-button:active { transform: scale(0.95); }
-        .action-button:disabled { opacity: 0.5; cursor: not-allowed; }
-        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .bouncing { animation: bounce 0.3s ease-in-out; }
-        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); justify-content: center; align-items: center; }
-        .modal-content { background-color: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); width: 90%; max-width: 400px; }
-        #petHouse { background-color: #e0f2fe; border-radius: 1rem; }
-        .decoration-item { position: absolute; font-size: 2.5rem; user-select: none; }
-        #petCostume { position: absolute; z-index: 6; font-size: 3rem; transform: translate(-50%, -50%); top: 40%; left: 50%; pointer-events: none; }
-        @keyframes levelUpAnimation { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.5); } }
-        .level-up-effect { position: absolute; z-index: 20; color: #facc15; font-size: 2rem; animation: levelUpAnimation 1.5s ease-out forwards; pointer-events: none; }
+        h1, h2, .font-display { font-family: 'Fredoka', sans-serif; }
+        
+        /* 自定義樣式 */
+        .game-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.3s ease;
+        }
+        
+        .progress-bar-container {
+            background: #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s;
+            background-image: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+        }
+
+        /* 動畫特效 */
+        @keyframes bounce-gentle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .animate-bounce-gentle { animation: bounce-gentle 2s infinite ease-in-out; }
+        
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .animate-pop { animation: pop 0.3s ease-out; }
+
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.2); } }
+        .float-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 1.5s forwards; z-index: 50; text-shadow: 1px 1px 0 #fff; }
+
+        /* 小遊戲區域 */
+        #miniGameArea {
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+        .falling-item {
+            position: absolute;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .falling-item:active { transform: scale(1.5); filter: brightness(1.2); }
+
+        /* Toast 通知 */
+        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 90%; max-width: 400px; }
+        .toast { background: rgba(30, 41, 59, 0.9); color: white; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; text-align: center; animation: fadeInOut 3s forwards; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }
     </style>
 </head>
-<body>
+<body class="text-gray-800 selection:bg-indigo-100">
 
-    <div id="gameContainer" class="game-container p-4">
-        <!-- 主遊戲面板 -->
-        <div id="gamePanel" class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-lg w-full border border-gray-200 hidden">
-            <h1 class="text-4xl font-bold text-gray-800 mb-4" id="petNameDisplay"></h1>
-
-            <!-- 寵物狀態與等級 -->
-            <div class="flex items-center justify-between text-gray-700 font-bold text-lg mb-2">
-                <span id="petLevelDisplay">等級：1</span>
-                <div id="goldCoinDisplay" class="text-sm font-semibold text-amber-500 flex items-center">
-                    <span class="text-xl mr-1">💰</span> 0
+    <div class="min-h-screen flex items-center justify-center p-4">
+        
+        <div id="petSelectionPanel" class="game-card w-full max-w-lg p-8 rounded-3xl shadow-xl border border-white/50">
+            <h1 class="text-3xl font-display font-bold text-center mb-2 text-indigo-600">選擇你的夥伴</h1>
+            <p class="text-center text-gray-500 mb-8">一旦選擇就不能更換囉（除非重置存檔）</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="petSelectGrid">
                 </div>
+            <div class="mt-8 text-center">
+                <button id="resetSaveBtn" class="text-xs text-gray-400 underline hover:text-red-400">重置所有存檔</button>
             </div>
-            <div class="w-full mb-4">
-                <div class="flex justify-between items-center mb-1"><span class="text-sm font-semibold text-gray-600">經驗值</span><span id="expValue" class="text-sm font-semibold text-gray-600">0/100</span></div>
-                <div class="progress-bar"><div id="expFill" class="progress-fill bg-yellow-400"></div></div>
-            </div>
-
-            <!-- 寵物顯示區域 -->
-            <div id="petHouse" class="relative w-full h-48 flex items-center justify-center mb-4">
-                <div id="decorationContainer" class="absolute inset-0"></div>
-                <div id="petDisplay" class="text-9xl transition-transform duration-200 relative z-[5]">🐱</div>
-                <div id="petCostume"></div>
-                <div id="dirtDisplay" class="text-5xl absolute bottom-2 right-10 hidden animate-pulse z-10">💩</div>
-            </div>
-
-            <!-- 寵物數值條 -->
-            <div class="flex flex-col items-center mb-6 space-y-3">
-                <div class="w-full"><div class="flex justify-between items-center mb-1"><span class="text-sm font-semibold text-gray-600">飽足度</span><span id="hungerValue" class="text-sm font-semibold text-gray-600">100%</span></div><div class="progress-bar"><div id="hungerFill" class="progress-fill bg-green-500"></div></div></div>
-                <div class="w-full"><div class="flex justify-between items-center mb-1"><span class="text-sm font-semibold text-gray-600">快樂度</span><span id="happinessValue" class="text-sm font-semibold text-gray-600">100%</span></div><div class="progress-bar"><div id="happinessFill" class="progress-fill bg-pink-500"></div></div></div>
-                <div class="w-full"><div class="flex justify-between items-center mb-1"><span class="text-sm font-semibold text-gray-600">清潔度</span><span id="hygieneValue" class="text-sm font-semibold text-gray-600">100%</span></div><div class="progress-bar"><div id="hygieneFill" class="progress-fill bg-sky-500"></div></div></div>
-            </div>
-
-            <!-- 操作按鈕 -->
-            <div class="grid grid-cols-3 gap-2">
-                <button id="feedButton" class="action-button bg-blue-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-blue-600">餵食</button>
-                <button id="playButton" class="action-button bg-pink-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-pink-600">玩耍</button>
-                <button id="cleanButton" class="action-button bg-green-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-green-600">清潔</button>
-                <button id="skillButton" class="action-button bg-yellow-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-yellow-600">技能</button>
-                <button id="decorationButton" class="action-button bg-orange-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-orange-600">裝飾</button>
-                <button id="shopButton" class="action-button bg-purple-500 text-white font-bold py-3 px-2 rounded-xl hover:bg-purple-600">商店</button>
-            </div>
-
-            <!-- 狀態訊息 -->
-            <div id="statusMessage" class="mt-4 text-sm text-gray-500 min-h-[20px] flex items-center justify-center"></div>
         </div>
 
-        <!-- 寵物選擇畫面 -->
-        <div id="petSelectionPanel" class="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full border border-gray-200"><h1 class="text-4xl font-bold text-gray-800 mb-6">選擇你的寵物</h1><div class="grid grid-cols-3 gap-4"><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="cat"><div class="text-6xl mb-2">🐱</div><span class="font-semibold text-lg">貓</span></button><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="dog"><div class="text-6xl mb-2">🐶</div><span class="font-semibold text-lg">狗</span></button><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="rabbit"><div class="text-6xl mb-2">🐰</div><span class="font-semibold text-lg">兔</span></button><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="parrot"><div class="text-6xl mb-2">🦜</div><span class="font-semibold text-lg">鸚鵡</span></button><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="hamster"><div class="text-6xl mb-2">🐹</div><span class="font-semibold text-lg">倉鼠</span></button><button class="select-pet-button p-4 rounded-xl hover:bg-gray-100" data-pet="turtle"><div class="text-6xl mb-2">🐢</div><span class="font-semibold text-lg">烏龜</span></button></div></div>
+        <div id="gamePanel" class="hidden w-full max-w-lg">
+            <div class="game-card rounded-3xl shadow-2xl overflow-hidden border border-white/60">
+                
+                <div class="bg-indigo-50/50 p-6 pb-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 id="petNameDisplay" class="text-2xl font-bold text-gray-800"></h2>
+                            <span id="petLevelDisplay" class="text-xs font-bold bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">Lv.1</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="flex items-center text-amber-500 font-bold text-lg bg-white px-3 py-1 rounded-full shadow-sm mb-1">
+                                <span class="mr-1">🪙</span> <span id="goldCoinDisplay">0</span>
+                            </div>
+                            <button id="saveBtn" class="text-xs text-gray-400 hover:text-indigo-500 transition-colors">自動存檔中...</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="expFill" class="absolute top-0 left-0 h-full bg-yellow-400 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="text-right text-xs text-gray-400 mt-1"><span id="expValue">0/100</span> XP</div>
+                </div>
 
-        <!-- 彈出視窗 -->
-        <div id="shopModal" class="modal"><div class="modal-content text-center"><h2 class="text-2xl font-bold mb-4">商店</h2><p class="text-sm text-gray-500 mb-4">用快樂度換取各種好物！</p><div id="shopItems" class="grid grid-cols-2 gap-4"></div><button id="closeShopButton" class="mt-6 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">關閉</button></div></div>
-        <div id="skillModal" class="modal"><div class="modal-content text-center"><h2 class="text-2xl font-bold mb-4">寵物技能</h2><p class="text-sm text-gray-500 mb-4">隨著等級提升，你的寵物會越來越厲害！</p><div id="skillItems" class="space-y-3 text-left"></div><button id="closeSkillButton" class="mt-6 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">關閉</button></div></div>
-        <div id="decorationModal" class="modal"><div class="modal-content text-center"><h2 class="text-2xl font-bold mb-4">裝飾小屋</h2><p class="text-sm text-gray-500 mb-4">用金幣為寵物打造一個溫暖的家！</p><div id="decorationItems" class="grid grid-cols-2 gap-4"></div><button id="closeDecorationButton" class="mt-6 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">關閉</button></div></div>
+                <div class="relative h-64 bg-gradient-to-b from-blue-50 to-indigo-50 flex items-center justify-center overflow-hidden group">
+                    <div id="decorationContainer" class="absolute inset-0 pointer-events-none"></div>
+                    
+                    <div id="petHouse" class="relative z-10 text-center cursor-pointer transition-transform active:scale-95 select-none">
+                        <div id="petCostume" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl z-20 pointer-events-none"></div>
+                        <div id="petDisplay" class="text-9xl filter drop-shadow-xl animate-bounce-gentle transform transition-transform duration-300"></div>
+                        <div id="dirtDisplay" class="absolute bottom-0 right-0 text-5xl animate-pulse hidden z-20">💩</div>
+                    </div>
 
+                    <div id="floatingTextContainer" class="absolute inset-0 pointer-events-none z-50"></div>
+                </div>
+
+                <div class="p-6 space-y-4 bg-white">
+                    <div class="grid grid-cols-1 gap-3">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl w-8">🍗</span>
+                            <div class="flex-1">
+                                <div class="flex justify-between text-xs font-semibold text-gray-500 mb-1"><span>飽足感</span><span id="hungerValue">100%</span></div>
+                                <div class="progress-bar-container h-3"><div id="hungerFill" class="progress-fill bg-green-500" style="width: 100%"></div></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl w-8">💖</span>
+                            <div class="flex-1">
+                                <div class="flex justify-between text-xs font-semibold text-gray-500 mb-1"><span>快樂度</span><span id="happinessValue">100%</span></div>
+                                <div class="progress-bar-container h-3"><div id="happinessFill" class="progress-fill bg-pink-500" style="width: 100%"></div></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl w-8">✨</span>
+                            <div class="flex-1">
+                                <div class="flex justify-between text-xs font-semibold text-gray-500 mb-1"><span>清潔度</span><span id="hygieneValue">100%</span></div>
+                                <div class="progress-bar-container h-3"><div id="hygieneFill" class="progress-fill bg-sky-500" style="width: 100%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 sm:gap-3 mt-4">
+                        <button id="btnFeed" class="btn-action bg-blue-100 hover:bg-blue-200 text-blue-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">🥛</span><span class="text-xs">餵食</span></button>
+                        <button id="btnPlay" class="btn-action bg-pink-100 hover:bg-pink-200 text-pink-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">🎾</span><span class="text-xs">玩耍</span></button>
+                        <button id="btnClean" class="btn-action bg-teal-100 hover:bg-teal-200 text-teal-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">🚿</span><span class="text-xs">清潔</span></button>
+                        <button id="btnSkill" class="btn-action bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">⚡</span><span class="text-xs">技能</span></button>
+                        <button id="btnDecor" class="btn-action bg-orange-100 hover:bg-orange-200 text-orange-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">🏠</span><span class="text-xs">佈置</span></button>
+                        <button id="btnShop" class="btn-action bg-purple-100 hover:bg-purple-200 text-purple-700 py-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-colors"><span class="text-xl">🛍️</span><span class="text-xs">商店</span></button>
+                        <button id="btnGame" class="btn-action col-span-2 bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-xl font-bold flex flex-row justify-center items-center gap-2 shadow-md transition-transform hover:-translate-y-0.5"><span class="text-xl">🎮</span><span>小遊戲</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modalOverlay" class="fixed inset-0 bg-black/60 hidden z-[90] items-center justify-center backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl transform transition-all scale-100 overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+                    <h3 id="modalTitle" class="font-bold text-lg text-gray-800">標題</h3>
+                    <button id="modalClose" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <div id="modalContent" class="p-4 overflow-y-auto">
+                    </div>
+            </div>
+        </div>
+
+        <div id="gameModal" class="fixed inset-0 bg-black/80 hidden z-[95] items-center justify-center backdrop-blur-md p-4">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-xl">🍎 接蘋果大作戰</h3>
+                    <div class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">Score: <span id="gameScore" class="text-indigo-600 font-bold">0</span> | Time: <span id="gameTime" class="text-red-500 font-bold">20</span>s</div>
+                </div>
+                <div id="miniGameArea" class="h-80 w-full mb-4 cursor-crosshair touch-none"></div>
+                <div class="flex gap-2">
+                    <button id="btnStartGame" class="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-bold hover:bg-indigo-600 transition-colors">開始 (花費10快樂)</button>
+                    <button id="btnCloseGame" class="px-6 bg-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-300">離開</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast-container"></div>
     </div>
 
 <script>
-    // --- 常數 ---
-    const CONSTS = { 基礎飢餓度下降率: 1.5, 基礎快樂度下降率: 1, 基礎清潔度下降率: 0.8, 最大數值: 100, 餵食效果: 20, 玩耍效果: 15, 清潔效果: 30, 每次行動經驗值: 10 };
+    /**
+     * 遊戲設定與資料庫
+     */
+    const CONFIG = {
+        maxStats: 100,
+        decay: { hunger: 1.5, fun: 1.2, clean: 0.8 }, // 基礎衰退率
+        gain: { feed: 25, play: 20, clean: 40, expAction: 15 }, // 行動增加值
+        levelExpBase: 100, // 等級1所需的經驗值
+    };
 
-    // --- DOM 元素 ---
-    const dom = {
-        飢餓度數值: document.getElementById('hungerValue'), 飢餓度填充條: document.getElementById('hungerFill'), 快樂度數值: document.getElementById('happinessValue'), 快樂度填充條: document.getElementById('happinessFill'), 清潔度數值: document.getElementById('hygieneValue'), 清潔度填充條: document.getElementById('hygieneFill'), 寵物顯示區: document.getElementById('petDisplay'), 寵物小屋: document.getElementById('petHouse'), 寵物裝扮: document.getElementById('petCostume'), 髒污顯示區: document.getElementById('dirtDisplay'), 寵物名稱顯示區: document.getElementById('petNameDisplay'), 寵物等級顯示區: document.getElementById('petLevelDisplay'), 經驗值數值: document.getElementById('expValue'), 經驗值填充條: document.getElementById('expFill'), 餵食按鈕: document.getElementById('feedButton'), 玩耍按鈕: document.getElementById('playButton'), 清潔按鈕: document.getElementById('cleanButton'), 商店按鈕: document.getElementById('shopButton'), 技能按鈕: document.getElementById('skillButton'), 裝飾按鈕: document.getElementById('decorationButton'), 狀態訊息: document.getElementById('statusMessage'), 寵物選擇面板: document.getElementById('petSelectionPanel'), 遊戲面板: document.getElementById('gamePanel'), 選擇寵物按鈕們: document.querySelectorAll('.select-pet-button'),
-        商店彈出視窗: document.getElementById('shopModal'), 關閉商店按鈕: document.getElementById('closeShopButton'), 商店物品容器: document.getElementById('shopItems'),
-        技能彈出視窗: document.getElementById('skillModal'), 關閉技能按鈕: document.getElementById('closeSkillButton'), 技能物品容器: document.getElementById('skillItems'),
-        裝飾彈出視窗: document.getElementById('decorationModal'), 關閉裝飾按鈕: document.getElementById('closeDecorationButton'), 裝飾物品容器: document.getElementById('decorationItems'),
-        金幣顯示: document.getElementById('goldCoinDisplay'), 裝飾容器: document.getElementById('decorationContainer'),
+    const DB = {
+        pets: {
+            cat: { name: '傲嬌貓', idle: '🐱', sad: '😿', hungry: '😼', happy: '😻', color: 'from-orange-100 to-yellow-50' },
+            dog: { name: '憨憨狗', idle: '🐶', sad: '🥺', hungry: '🐕', happy: '🥰', color: 'from-gray-100 to-stone-50' },
+            rabbit: { name: '月亮兔', idle: '🐰', sad: '😭', hungry: '🐇', happy: '🥕', color: 'from-pink-100 to-rose-50' },
+            parrot: { name: '吵鬧鳥', idle: '🦜', sad: '😞', hungry: '🐦', happy: '🦜', color: 'from-green-100 to-lime-50' },
+            hamster: { name: '貪吃鼠', idle: '🐹', sad: '😥', hungry: '😑', happy: '😋', color: 'from-amber-100 to-orange-50' },
+            turtle: { name: '慢活龜', idle: '🐢', sad: '😰', hungry: '🐢', happy: '🥳', color: 'from-emerald-100 to-teal-50' }
+        },
+        items: [
+            { id: 'toy', icon: '🧶', name: '毛線球', cost: 20, type: 'fun', val: 30, desc: '增加 30 快樂' },
+            { id: 'treat', icon: '🍰', name: '高級罐罐', cost: 25, type: 'hunger', val: 40, desc: '增加 40 飽足' },
+            { id: 'soap', icon: '🫧', name: '泡泡浴', cost: 15, type: 'clean', val: 60, desc: '增加 60 清潔' },
+            { id: 'potion', icon: '🧪', name: '全能藥水', cost: 80, type: 'all', val: 50, desc: '所有數值 +50' }
+        ],
+        skills: [
+            { id: 's1', name: '鐵胃', level: 3, desc: '飢餓度下降速度減緩 20%', type: 'passive' },
+            { id: 's2', name: '樂天派', level: 5, desc: '玩耍效果提升 25%', type: 'passive' },
+            { id: 's3', name: '潔癖', level: 10, desc: '清潔度下降速度減緩 30%', type: 'passive' },
+            { id: 's4', name: '聰明絕頂', level: 15, desc: '每次行動額外獲得 5 經驗', type: 'passive' }
+        ],
+        decorations: [
+            { id: 'bed', icon: '🛏️', name: '軟軟床', cost: 50, style: 'bottom: 10%; left: 10%; font-size: 2.5rem;' },
+            { id: 'plant', icon: '🪴', name: '龜背芋', cost: 30, style: 'bottom: 15%; right: 10%; font-size: 2rem;' },
+            { id: 'lamp', icon: '🏮', name: '紙燈籠', cost: 40, style: 'top: 10%; left: 10%; font-size: 2rem;' },
+            { id: 'picture', icon: '🖼️', name: '風景畫', cost: 60, style: 'top: 15%; right: 15%; font-size: 2.2rem;' }
+        ]
+    };
+
+    /**
+     * 遊戲狀態 (State)
+     */
+    let state = {
+        petId: null,
+        name: '',
+        level: 1,
+        exp: 0,
+        gold: 100,
+        stats: { hunger: 100, fun: 100, clean: 100 },
+        skills: [],
+        inventory: [], // 擁有的裝飾品 ID
+        lastLogin: Date.now()
     };
     
-    // --- 遊戲變數 ---
-    let gameState = { 飢餓度: CONSTS.最大數值, 快樂度: CONSTS.最大數值, 清潔度: CONSTS.最大數值, 遊戲循環計時器: null, 等級: 1, 目前經驗值: 0, 升級所需經驗值: 100, 遊戲進行中: true, 已學習技能: [], 目前寵物: null, 金幣: 0, 已購買裝飾: [], 目前節日裝扮: null };
+    // 系統變數
+    let gameLoopId = null;
+    let autoSaveId = null;
+    let miniGame = { active: false, score: 0, timer: null, spawner: null };
 
-    // --- 遊戲資料 ---
-    const DATA = {
-        寵物: { cat: { n: '貓咪', e: '🐱', s: '😿', b: '😼', h: '😻' }, dog: { n: '狗狗', e: '🐶', s: '🥺', b: '🐕', h: '🥰' }, rabbit: { n: '兔子', e: '🐰', s: '😭', b: '🐇', h: '🥕' }, parrot: { n: '鸚鵡', e: '🦜', s: '😞', b: '🐦', h: '🦜' }, hamster: { n: '倉鼠', e: '🐹', s: '😥', b: '😑', h: '😋' }, turtle: { n: '烏龜', e: '🐢', s: '😰', b: '🤔', h: '🥳' } },
-        商店物品: [ { n: '玩具球', e: '⚽', c: 20, t: '快樂度', v: 30 }, { n: '豪華點心', e: '🧁', c: 25, t: '飽足度', v: 40 }, { n: '神奇香皂', e: '🧼', c: 15, t: '清潔度', v: 60 }, { n: '貓薄荷', e: '🌿', c: 30, t: '快樂度', v: 50 } ],
-        技能: [ { id: 'appetite_control', n: '食慾控制', l: 5, d: '減緩飢餓度下降速度 20%。' }, { id: 'playful_heart', n: '玩樂之心', l: 10, d: '提升玩耍獲得的快樂度 25%。' }, { id: 'self_cleaning', n: '自我清潔', l: 15, d: '減緩清潔度下降速度 30%。' }, { id: 'fast_learner', n: '學習之星', l: 20, d: '每次行動獲得額外 5 點經驗值。' } ],
-        裝飾品: [ { id: 'bed', n: '舒適小床', e: '🛏️', c: 50, p: { bottom: '5px', left: '10px' }, interaction: { stat: '快樂度', value: 5, msg: '你的寵物在床上小睡片刻，精神好多了！' } }, { id: 'plant', n: '小盆栽', e: '🪴', c: 30, p: { top: '10px', right: '15px' }, interaction: { stat: '快樂度', value: 3, msg: '寵物好奇地聞了聞盆栽。' } }, { id: 'ball', n: '紅色皮球', e: '⚽', c: 20, p: { bottom: '15px', right: '20px'}, interaction: { stat: '快樂度', value: 10, msg: '你的寵物開心地玩著球！' } }, { id: 'window', n: '溫暖窗戶', e: '🖼️', c: 80, p: { top: '5px', left: '5px' } }, { id: 'music_box', n: '音樂盒', e: '🎵', c: 60, p: { top: '50px', right: '10px'}, interaction: { stat: '快樂度', value: 8, msg: '優美的音樂讓寵物心情愉快！' } } ],
-        節日: [ { month: 11, day: 25, e: '🎅', name: '聖誕節' }, { month: 9, day: 31, e: '🎃', name: '萬聖節' }, { month: 0, day: 1, e: '🎉', name: '新年' }, { month: 8, day: 23, e: '🥳', name: '測試節日' } ] // 月份是 0-11, 8 = 九月
+    // DOM 緩存
+    const UI = {
+        panels: { select: document.getElementById('petSelectionPanel'), game: document.getElementById('gamePanel') },
+        stats: {
+            hunger: { text: document.getElementById('hungerValue'), bar: document.getElementById('hungerFill') },
+            fun: { text: document.getElementById('happinessValue'), bar: document.getElementById('happinessFill') },
+            clean: { text: document.getElementById('hygieneValue'), bar: document.getElementById('hygieneFill') },
+            exp: { text: document.getElementById('expValue'), bar: document.getElementById('expFill') },
+            gold: document.getElementById('goldCoinDisplay'),
+            level: document.getElementById('petLevelDisplay'),
+            name: document.getElementById('petNameDisplay')
+        },
+        pet: {
+            house: document.getElementById('petHouse'),
+            display: document.getElementById('petDisplay'),
+            dirt: document.getElementById('dirtDisplay'),
+            costume: document.getElementById('petCostume'),
+            decorContainer: document.getElementById('decorationContainer'),
+            floatContainer: document.getElementById('floatingTextContainer')
+        },
+        modal: {
+            overlay: document.getElementById('modalOverlay'),
+            title: document.getElementById('modalTitle'),
+            content: document.getElementById('modalContent'),
+            close: document.getElementById('modalClose')
+        },
+        gameModal: {
+            overlay: document.getElementById('gameModal'),
+            area: document.getElementById('miniGameArea'),
+            score: document.getElementById('gameScore'),
+            time: document.getElementById('gameTime'),
+            start: document.getElementById('btnStartGame'),
+            close: document.getElementById('btnCloseGame')
+        }
     };
 
-    // --- 遊戲邏輯 ---
-    function 計算技能效果() {
-        let eff = { 飢餓度下降率: CONSTS.基礎飢餓度下降率, 當前玩耍效果: CONSTS.玩耍效果, 清潔度下降率: CONSTS.基礎清潔度下降率, 額外經驗值: 0 };
-        if (gameState.已學習技能.includes('appetite_control')) eff.飢餓度下降率 *= 0.8; if (gameState.已學習技能.includes('playful_heart')) eff.當前玩耍效果 *= 1.25; if (gameState.已學習技能.includes('self_cleaning')) eff.清潔度下降率 *= 0.7; if (gameState.已學習技能.includes('fast_learner')) eff.額外經驗值 = 5;
-        return eff;
-    }
-
-    function 更新介面() {
-        ['飢餓度', '快樂度', '清潔度'].forEach(stat => gameState[stat] = Math.min(Math.max(0, gameState[stat]), CONSTS.最大數值));
-        dom.飢餓度數值.textContent = `${Math.round(gameState.飢餓度)}%`; dom.快樂度數值.textContent = `${Math.round(gameState.快樂度)}%`; dom.清潔度數值.textContent = `${Math.round(gameState.清潔度)}%`;
-        dom.經驗值數值.textContent = `${gameState.目前經驗值}/${gameState.升級所需經驗值}`; dom.寵物等級顯示區.textContent = `等級：${gameState.等級}`;
-        dom.金幣顯示.innerHTML = `<span class="text-xl mr-1">💰</span> ${gameState.金幣}`;
-        dom.飢餓度填充條.style.width = `${gameState.飢餓度}%`; dom.快樂度填充條.style.width = `${gameState.快樂度}%`; dom.清潔度填充條.style.width = `${gameState.清潔度}%`;
-        dom.經驗值填充條.style.width = `${(gameState.目前經驗值 / gameState.升級所需經驗值) * 100}%`;
-        if (gameState.飢餓度 > 50) dom.飢餓度填充條.style.backgroundColor = '#22c55e'; else if (gameState.飢餓度 > 20) dom.飢餓度填充條.style.backgroundColor = '#f97316'; else dom.飢餓度填充條.style.backgroundColor = '#ef4444';
-        if (gameState.快樂度 > 50) dom.快樂度填充條.style.backgroundColor = '#ec4899'; else if (gameState.快樂度 > 20) dom.快樂度填充條.style.backgroundColor = '#facc15'; else dom.快樂度填充條.style.backgroundColor = '#ef4444';
-        if (gameState.清潔度 > 50) dom.清潔度填充條.style.backgroundColor = '#38bdf8'; else if (gameState.清潔度 > 20) dom.清潔度填充條.style.backgroundColor = '#a16207'; else dom.清潔度填充條.style.backgroundColor = '#ef4444';
+    /**
+     * 初始化系統
+     */
+    function init() {
+        renderPetSelection();
+        loadGame();
         
-        // 更新裝扮
-        dom.寵物裝扮.textContent = gameState.目前節日裝扮 || '';
+        // 綁定主按鈕事件
+        document.getElementById('btnFeed').onclick = () => action('feed');
+        document.getElementById('btnPlay').onclick = () => action('play');
+        document.getElementById('btnClean').onclick = () => action('clean');
+        document.getElementById('btnShop').onclick = openShop;
+        document.getElementById('btnSkill').onclick = openSkills;
+        document.getElementById('btnDecor').onclick = openDecor;
+        document.getElementById('btnGame').onclick = openMiniGameModal;
+        
+        // Modal 關閉
+        UI.modal.close.onclick = closeModal;
+        UI.modal.overlay.onclick = (e) => { if(e.target === UI.modal.overlay) closeModal(); };
+        
+        // 重置按鈕
+        document.getElementById('resetSaveBtn').onclick = () => {
+            if(confirm('確定要刪除存檔重新開始嗎？')) {
+                localStorage.removeItem('petSaveData');
+                location.reload();
+            }
+        };
 
-        if (!gameState.遊戲進行中) return;
-        dom.髒污顯示區.classList.toggle('hidden', gameState.清潔度 >= 30);
-        if (gameState.清潔度 < 20) { dom.寵物顯示區.textContent = gameState.目前寵物.s; dom.狀態訊息.textContent = '你的寵物需要洗澡了！'; } 
-        else if (gameState.飢餓度 < 20 || gameState.快樂度 < 20) { dom.寵物顯示區.textContent = gameState.目前寵物.s; dom.狀態訊息.textContent = '你的寵物看起來很不開心！'; } 
-        else if (gameState.飢餓度 < 50 || gameState.快樂度 < 50 || gameState.清潔度 < 50) { dom.寵物顯示區.textContent = gameState.目前寵物.b; dom.狀態訊息.textContent = '你的寵物似乎想要點什麼。'; } 
-        else { dom.寵物顯示區.textContent = gameState.目前寵物.h; dom.狀態訊息.textContent = '你的寵物看起來很開心！'; }
+        // 自動存檔循環
+        autoSaveId = setInterval(saveGame, 5000);
     }
 
-    function 觸發升級動畫() {
-        const effect = document.createElement('div');
-        effect.className = 'level-up-effect';
-        effect.textContent = '✨ LEVEL UP! ✨';
-        dom.寵物小屋.appendChild(effect);
-        setTimeout(() => {
-            effect.remove();
-        }, 1500);
-    }
+    /**
+     * 核心邏輯
+     */
+    function loadGame() {
+        const saved = localStorage.getItem('petSaveData');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // 合併存檔，避免舊版存檔缺少欄位
+                state = { ...state, ...parsed, stats: { ...state.stats, ...parsed.stats } };
+                
+                // 計算離線時間的數值扣除 (簡易版)
+                const now = Date.now();
+                const diffHours = (now - state.lastLogin) / (1000 * 60 * 60);
+                if (diffHours > 0.5) {
+                    showToast(`你離開了 ${diffHours.toFixed(1)} 小時，寵物想你了！`);
+                    updateStats({ hunger: -diffHours * 10, fun: -diffHours * 10, clean: -diffHours * 5 });
+                }
 
-    function 檢查升級() {
-        if (gameState.目前經驗值 >= gameState.升級所需經驗值) {
-            gameState.等級++; gameState.目前經驗值 -= gameState.升級所需經驗值; gameState.升級所需經驗值 = gameState.等級 * 100; gameState.金幣 += gameState.等級 * 10;
-            顯示暫時訊息(`恭喜！升到了等級 ${gameState.等級}！獲得 ${gameState.等級*10} 金幣！`);
-            觸發升級動畫();
-            DATA.技能.forEach(skill => { if (gameState.等級 >= skill.l && !gameState.已學習技能.includes(skill.id)) { gameState.已學習技能.push(skill.id); 顯示暫時訊息(`學會了新技能：${skill.n}!`, 3000); } });
-            更新介面();
+                startGame(state.petId);
+            } catch (e) {
+                console.error("存檔損壞", e);
+                localStorage.removeItem('petSaveData');
+            }
         }
     }
 
-    function 檢查遊戲結束() {
-        if (gameState.飢餓度 <= 0 || gameState.快樂度 <= 0 || gameState.清潔度 <= 0) {
-            gameState.遊戲進行中 = false; clearInterval(gameState.遊戲循環計時器); dom.寵物顯示區.textContent = '👻'; dom.狀態訊息.textContent = '你的寵物離家出走了... 請刷新頁面重新開始。';
-            [dom.餵食按鈕, dom.玩耍按鈕, dom.清潔按鈕, dom.商店按鈕, dom.技能按鈕, dom.裝飾按鈕].forEach(btn => btn.disabled = true);
+    function saveGame() {
+        if (!state.petId) return;
+        state.lastLogin = Date.now();
+        localStorage.setItem('petSaveData', JSON.stringify(state));
+        const btn = document.getElementById('saveBtn');
+        btn.textContent = '已存檔';
+        setTimeout(() => btn.textContent = '自動存檔中...', 2000);
+    }
+
+    function startGame(petId) {
+        state.petId = petId;
+        UI.panels.select.classList.add('hidden');
+        UI.panels.game.classList.remove('hidden');
+        
+        // 設定寵物基本資料
+        const petData = DB.pets[petId];
+        UI.stats.name.textContent = petData.name;
+        
+        renderDecorations();
+        updateUI();
+        
+        // 開始遊戲循環 (每秒扣數值)
+        if (gameLoopId) clearInterval(gameLoopId);
+        gameLoopId = setInterval(gameLoop, 1000);
+    }
+
+    function gameLoop() {
+        // 計算技能減免
+        let decay = { ...CONFIG.decay };
+        if (hasSkill('s1')) decay.hunger *= 0.8;
+        if (hasSkill('s3')) decay.clean *= 0.7;
+
+        updateStats({
+            hunger: -decay.hunger,
+            fun: -decay.fun,
+            clean: -decay.clean
+        }, false); // false = 不顯示浮動文字
+        
+        // 檢查特殊節日
+        checkHoliday();
+    }
+
+    /**
+     * 動作系統
+     */
+    function action(type) {
+        if (state.stats.hunger <= 0 && type !== 'feed') return showToast('寵物餓扁了，沒力氣！');
+        
+        UI.pet.display.classList.add('animate-pop');
+        setTimeout(() => UI.pet.display.classList.remove('animate-pop'), 300);
+
+        let changes = {};
+        let gainExp = CONFIG.gain.expAction + (hasSkill('s4') ? 5 : 0);
+        let msg = '';
+
+        if (type === 'feed') {
+            changes = { hunger: CONFIG.gain.feed };
+            msg = 'Yummy!';
+            createFloatingText('🍎 +飽足', 'text-green-600');
+        } else if (type === 'play') {
+            let val = CONFIG.gain.play * (hasSkill('s2') ? 1.25 : 1);
+            changes = { fun: val, hunger: -5 };
+            msg = 'Happy!';
+            createFloatingText('🎾 +快樂', 'text-pink-600');
+        } else if (type === 'clean') {
+            changes = { clean: CONFIG.gain.clean };
+            msg = 'Shiny!';
+            createFloatingText('✨ +清潔', 'text-blue-600');
         }
+
+        updateStats(changes);
+        addExp(gainExp);
+        addGold(Math.floor(Math.random() * 5) + 1); // 隨機獲得金幣
     }
 
-    function 遊戲循環() {
-        if (!gameState.遊戲進行中) return;
-        const eff = 計算技能效果(); gameState.飢餓度 -= eff.飢餓度下降率; gameState.快樂度 -= CONSTS.基礎快樂度下降率; gameState.清潔度 -= eff.清潔度下降率;
-        更新介面(); 檢查遊戲結束();
-    }
-
-    function 檢查節日() {
-        const today = new Date();
-        const month = today.getMonth();
-        const day = today.getDate();
-        const currentHoliday = DATA.節日.find(h => h.month === month && h.day === day);
-        if (currentHoliday) {
-            gameState.目前節日裝扮 = currentHoliday.e;
-            顯示暫時訊息(`今天是${currentHoliday.name}！你的寵物換上了特別裝扮！`, 4000);
+    function updateStats(changes, showFloat = true) {
+        for (let key in changes) {
+            state.stats[key] = Math.min(CONFIG.maxStats, Math.max(0, state.stats[key] + changes[key]));
         }
+        updateUI();
     }
 
-    function 選擇寵物(petId) {
-        gameState.目前寵物 = DATA.寵物[petId]; dom.寵物選擇面板.classList.add('hidden'); dom.遊戲面板.classList.remove('hidden');
-        dom.寵物名稱顯示區.textContent = gameState.目前寵物.n; dom.寵物顯示區.textContent = gameState.目前寵物.e;
-        檢查節日();
-        更新介面(); 
-        gameState.遊戲循環計時器 = setInterval(遊戲循環, 1000);
-    }
-    
-    function 顯示暫時訊息(msg, time = 2000) { const originalMsg = dom.狀態訊息.textContent; dom.狀態訊息.textContent = msg; setTimeout(() => { if (dom.狀態訊息.textContent === msg) { dom.狀態訊息.textContent = originalMsg; }}, time); }
+    function updateUI() {
+        const pet = DB.pets[state.petId];
+        const s = state.stats;
 
-    function 渲染商店() {
-        dom.商店物品容器.innerHTML = '';
-        DATA.商店物品.forEach(item => {
-            const el = document.createElement('div'); el.className = 'flex flex-col items-center bg-gray-50 p-4 rounded-xl cursor-pointer hover:bg-gray-200';
-            el.innerHTML = `<div class="text-4xl mb-2">${item.e}</div><div class="font-bold">${item.n}</div><div class="text-sm text-gray-600">費用：${item.c} 快樂度</div>`;
-            el.addEventListener('click', () => {
-                if (gameState.快樂度 >= item.c) {
-                    gameState.快樂度 -= item.c;
-                    if(item.t === '快樂度') gameState.快樂度 = Math.min(CONSTS.最大數值, gameState.快樂度 + item.v);
-                    else if (item.t === '飽足度') gameState.飢餓度 = Math.min(CONSTS.最大數值, gameState.飢餓度 + item.v);
-                    else if (item.t === '清潔度') gameState.清潔度 = Math.min(CONSTS.最大數值, gameState.清潔度 + item.v);
-                    顯示暫時訊息(`你使用了 ${item.n}！`); 更新介面(); dom.商店彈出視窗.style.display = 'none';
-                } else { 顯示暫時訊息('快樂度不足，無法購買。'); }
+        // 更新進度條
+        updateBar(UI.stats.hunger, s.hunger, 'bg-green-500', 'bg-red-500');
+        updateBar(UI.stats.fun, s.fun, 'bg-pink-500', 'bg-purple-500');
+        updateBar(UI.stats.clean, s.clean, 'bg-sky-500', 'bg-gray-500');
+
+        UI.stats.exp.text.textContent = `${Math.floor(state.exp)}/${getExpMax()}`;
+        UI.stats.exp.bar.style.width = `${(state.exp / getExpMax()) * 100}%`;
+        UI.stats.level.textContent = `Lv.${state.level}`;
+        UI.stats.gold.textContent = state.gold;
+
+        // 更新寵物表情
+        let mood = pet.idle;
+        if (s.clean < 30) { mood = pet.sad; UI.pet.dirt.classList.remove('hidden'); }
+        else {
+            UI.pet.dirt.classList.add('hidden');
+            if (s.hunger < 30) mood = pet.hungry;
+            else if (s.fun > 80) mood = pet.happy;
+            else if (s.fun < 30) mood = pet.sad;
+        }
+        UI.pet.display.textContent = mood;
+    }
+
+    function updateBar(el, val, highColor, lowColor) {
+        el.text.textContent = `${Math.round(val)}%`;
+        el.bar.style.width = `${val}%`;
+        el.bar.className = `progress-fill ${val > 30 ? highColor : lowColor}`;
+    }
+
+    /**
+     * 等級與經濟系統
+     */
+    function getExpMax() { return state.level * CONFIG.levelExpBase; }
+
+    function addExp(amount) {
+        state.exp += amount;
+        if (state.exp >= getExpMax()) {
+            state.exp -= getExpMax();
+            state.level++;
+            state.gold += state.level * 20; // 升級獎勵
+            showToast(`升級了！達到 Lv.${state.level}，獲得獎勵金幣！`);
+            createFloatingText('🆙 LEVEL UP', 'text-yellow-500 text-2xl');
+            
+            // 檢查解鎖技能
+            DB.skills.forEach(skill => {
+                if (state.level === skill.level) showToast(`新技能解鎖：${skill.name}！`);
             });
-            dom.商店物品容器.appendChild(el);
-        });
+        }
     }
 
-    function 渲染技能() {
-        dom.技能物品容器.innerHTML = '';
-        DATA.技能.forEach(skill => {
-            const has = gameState.已學習技能.includes(skill.id), can = gameState.等級 >= skill.l, el = document.createElement('div');
-            el.className = `p-3 rounded-lg ${has ? 'bg-green-100' : (can ? 'bg-yellow-100' : 'bg-gray-100 opacity-60')}`;
-            el.innerHTML = `<div class="font-bold text-gray-800">${skill.n} ${has ? ' (已學習)' : `(Lv.${skill.l} 解鎖)`}</div><div class="text-sm text-gray-600">${skill.d}</div>`;
-            dom.技能物品容器.appendChild(el);
-        });
+    function addGold(amount) {
+        state.gold += amount;
+        UI.stats.gold.textContent = state.gold;
     }
-    
-    function 渲染裝飾() {
-        dom.裝飾容器.innerHTML = '';
-        gameState.已購買裝飾.forEach(decoId => {
-            const decoData = DATA.裝飾品.find(d => d.id === decoId);
-            const el = document.createElement('div');
-            el.className = 'decoration-item';
-            el.textContent = decoData.e;
-            Object.assign(el.style, decoData.p);
-            if (decoData.interaction) {
-                el.classList.add('cursor-pointer');
-                el.style.transition = 'transform 0.2s ease, opacity 0.5s ease';
-                el.addEventListener('click', () => {
-                    if (!gameState.遊戲進行中) return;
-                    if (el.classList.contains('on-cooldown')) {
-                        顯示暫時訊息('這個家具正在冷卻中！');
-                        return;
-                    }
-                    const interaction = decoData.interaction;
-                    gameState[interaction.stat] = Math.min(CONSTS.最大數值, gameState[interaction.stat] + interaction.value);
-                    顯示暫時訊息(interaction.msg);
-                    el.style.transform = 'scale(1.2)';
-                    setTimeout(() => { el.style.transform = 'scale(1)'; }, 200);
-                    el.classList.add('on-cooldown', 'opacity-50');
-                    setTimeout(() => { el.classList.remove('on-cooldown', 'opacity-50'); }, 10000);
-                    更新介面();
-                });
+
+    function hasSkill(id) {
+        // 簡單判定：只要等級到了就自動擁有被動技
+        const skill = DB.skills.find(s => s.id === id);
+        return skill && state.level >= skill.level;
+    }
+
+    /**
+     * 商店與物品系統
+     */
+    function openShop() {
+        let html = `<div class="grid grid-cols-2 gap-3">`;
+        DB.items.forEach(item => {
+            html += `
+                <div onclick="buyItem('${item.id}')" class="border p-3 rounded-xl cursor-pointer hover:bg-indigo-50 transition active:scale-95 flex flex-col items-center text-center">
+                    <div class="text-3xl mb-1">${item.icon}</div>
+                    <div class="font-bold text-sm">${item.name}</div>
+                    <div class="text-xs text-gray-500 mb-1">${item.desc}</div>
+                    <div class="text-amber-500 font-bold text-sm">💰 ${item.cost}</div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        openModal('便利商店', html);
+    }
+
+    window.buyItem = function(itemId) {
+        const item = DB.items.find(i => i.id === itemId);
+        if (state.gold >= item.cost) {
+            state.gold -= item.cost;
+            let changes = {};
+            if (item.type === 'all') changes = { hunger: item.val, fun: item.val, clean: item.val };
+            else changes[item.type] = item.val;
+            
+            updateStats(changes);
+            updateUI();
+            showToast(`購買並使用了 ${item.name}`);
+            closeModal();
+        } else {
+            showToast('金幣不足！快去玩小遊戲賺錢吧！');
+        }
+    };
+
+    /**
+     * 裝飾系統
+     */
+    function openDecor() {
+        let html = `<div class="grid grid-cols-2 gap-3">`;
+        DB.decorations.forEach(d => {
+            const owned = state.inventory.includes(d.id);
+            html += `
+                <div onclick="${owned ? '' : `buyDecor('${d.id}')`}" class="border p-3 rounded-xl ${owned ? 'bg-gray-100 opacity-60' : 'cursor-pointer hover:bg-orange-50'} transition flex flex-col items-center text-center">
+                    <div class="text-3xl mb-1">${d.icon}</div>
+                    <div class="font-bold text-sm">${d.name}</div>
+                    <div class="text-amber-500 font-bold text-sm">${owned ? '已擁有' : `💰 ${d.cost}`}</div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        openModal('家具行', html);
+    }
+
+    window.buyDecor = function(id) {
+        const item = DB.decorations.find(d => d.id === id);
+        if (state.gold >= item.cost) {
+            state.gold -= item.cost;
+            state.inventory.push(id);
+            renderDecorations();
+            updateUI();
+            showToast(`購入了 ${item.name}！`);
+            openDecor(); // 刷新介面
+        } else {
+            showToast('錢不夠買這個家具QQ');
+        }
+    }
+
+    function renderDecorations() {
+        UI.pet.decorContainer.innerHTML = '';
+        state.inventory.forEach(id => {
+            const item = DB.decorations.find(d => d.id === id);
+            if (item) {
+                const el = document.createElement('div');
+                el.textContent = item.icon;
+                el.style.cssText = `position: absolute; ${item.style}`;
+                UI.pet.decorContainer.appendChild(el);
             }
-            dom.裝飾容器.appendChild(el);
-        });
-    }
-    
-    function 渲染裝飾商店() {
-        dom.裝飾物品容器.innerHTML = '';
-        DATA.裝飾品.forEach(item => {
-            const isOwned = gameState.已購買裝飾.includes(item.id);
-            const el = document.createElement('div');
-            el.className = `flex flex-col items-center bg-gray-50 p-4 rounded-xl ${isOwned ? 'opacity-50' : 'cursor-pointer hover:bg-gray-200'}`;
-            el.innerHTML = `<div class="text-4xl mb-2">${item.e}</div><div class="font-bold">${item.n}</div><div class="text-sm text-gray-600">${isOwned ? '已擁有' : `💰 ${item.c}`}</div>`;
-            if (!isOwned) {
-                el.addEventListener('click', () => {
-                    if (gameState.金幣 >= item.c) {
-                        gameState.金幣 -= item.c; gameState.已購買裝飾.push(item.id);
-                        顯示暫時訊息(`購買了 ${item.n}！`); 渲染裝飾(); 更新介面(); dom.裝飾彈出視窗.style.display = 'none';
-                    } else { 顯示暫時訊息('金幣不足，無法購買。'); }
-                });
-            }
-            dom.裝飾物品容器.appendChild(el);
         });
     }
 
-    function 執行寵物動作() {
-        if (!gameState.遊戲進行中) return;
-        const { 額外經驗值 } = 計算技能效果(); gameState.目前經驗值 += (CONSTS.每次行動經驗值 + 額外經驗值); gameState.金幣 += 1;
-        dom.寵物顯示區.classList.add('bouncing'); setTimeout(() => dom.寵物顯示區.classList.remove('bouncing'), 300);
-        檢查升級(); 更新介面();
+    function openSkills() {
+        let html = `<div class="space-y-2">`;
+        DB.skills.forEach(s => {
+            const unlocked = state.level >= s.level;
+            html += `
+                <div class="flex items-center p-3 rounded-lg ${unlocked ? 'bg-green-50 border border-green-200' : 'bg-gray-100 opacity-50'}">
+                    <div class="text-2xl mr-3">${unlocked ? '✅' : '🔒'}</div>
+                    <div>
+                        <div class="font-bold text-gray-800">${s.name} <span class="text-xs text-gray-500">(Lv.${s.level})</span></div>
+                        <div class="text-xs text-gray-600">${s.desc}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        openModal('技能樹', html);
     }
 
-    // --- 事件監聽器 ---
-    dom.選擇寵物按鈕們.forEach(btn => btn.addEventListener('click', e => 選擇寵物(e.currentTarget.dataset.pet)));
-    dom.餵食按鈕.addEventListener('click', () => { gameState.飢餓度 = Math.min(CONSTS.最大數值, gameState.飢餓度 + CONSTS.餵食效果); 執行寵物動作(); });
-    dom.玩耍按鈕.addEventListener('click', () => { const { 當前玩耍效果 } = 計算技能效果(); gameState.快樂度 = Math.min(CONSTS.最大數值, gameState.快樂度 + 當前玩耍效果); 執行寵物動作(); });
-    dom.清潔按鈕.addEventListener('click', () => { gameState.清潔度 = Math.min(CONSTS.最大數值, gameState.清潔度 + CONSTS.清潔效果); 執行寵物動作(); });
-    
-    function setupModal(openBtn, modal, closeBtn, renderFn) {
-        openBtn.addEventListener('click', () => { if (gameState.遊戲進行中) { if(renderFn) renderFn(); modal.style.display = 'flex'; } });
-        closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    /**
+     * 小遊戲：接蘋果
+     */
+    function openMiniGameModal() {
+        UI.gameModal.overlay.classList.remove('hidden');
+        UI.gameModal.overlay.classList.add('flex');
+        UI.gameModal.start.onclick = startMiniGame;
+        UI.gameModal.close.onclick = () => {
+            stopMiniGame();
+            UI.gameModal.overlay.classList.add('hidden');
+            UI.gameModal.overlay.classList.remove('flex');
+        };
     }
-    setupModal(dom.商店按鈕, dom.商店彈出視窗, dom.關閉商店按鈕, 渲染商店);
-    setupModal(dom.技能按鈕, dom.技能彈出視窗, dom.關閉技能按鈕, 渲染技能);
-    setupModal(dom.裝飾按鈕, dom.裝飾彈出視窗, dom.關閉裝飾按鈕, 渲染裝飾商店);
+
+    function startMiniGame() {
+        if (state.stats.fun < 10) { showToast('寵物太不開心了，不想玩！'); return; }
+        
+        updateStats({ fun: -10 }); // 扣入場費
+        miniGame.active = true;
+        miniGame.score = 0;
+        UI.gameModal.score.textContent = 0;
+        UI.gameModal.start.disabled = true;
+        UI.gameModal.start.classList.add('opacity-50');
+        
+        let timeLeft = 20;
+        UI.gameModal.time.textContent = timeLeft;
+        UI.gameModal.area.innerHTML = ''; // 清空
+
+        // 計時器
+        miniGame.timer = setInterval(() => {
+            timeLeft--;
+            UI.gameModal.time.textContent = timeLeft;
+            if (timeLeft <= 0) endMiniGame();
+        }, 1000);
+
+        // 生成器
+        spawnItem();
+    }
+
+    function spawnItem() {
+        if (!miniGame.active) return;
+        
+        const el = document.createElement('div');
+        const isBomb = Math.random() < 0.3;
+        el.textContent = isBomb ? '💣' : '🍎';
+        el.className = 'falling-item select-none';
+        el.style.left = Math.random() * 85 + '%';
+        el.style.top = '-50px';
+        
+        UI.gameModal.area.appendChild(el);
+
+        let pos = -50;
+        const speed = 3 + Math.random() * 3; // 隨機速度
+
+        function fall() {
+            if (!miniGame.active || !el.parentNode) return;
+            pos += speed;
+            el.style.transform = `translateY(${pos}px)`;
+            
+            // 點擊判定
+            el.onpointerdown = (e) => {
+                e.stopPropagation();
+                if (isBomb) {
+                    miniGame.score = Math.max(0, miniGame.score - 5);
+                    createFloatingText('-5', 'text-red-500 font-bold', el);
+                } else {
+                    miniGame.score += 1;
+                    createFloatingText('+1', 'text-green-500 font-bold', el);
+                }
+                UI.gameModal.score.textContent = miniGame.score;
+                el.remove();
+            };
+
+            // 超出邊界移除
+            if (pos > 320) el.remove();
+            else requestAnimationFrame(fall);
+        }
+        requestAnimationFrame(fall);
+
+        // 循環生成 (速度隨分數加快)
+        const nextSpawn = Math.max(400, 1000 - miniGame.score * 20);
+        miniGame.spawner = setTimeout(spawnItem, nextSpawn);
+    }
+
+    function stopMiniGame() {
+        miniGame.active = false;
+        clearInterval(miniGame.timer);
+        clearTimeout(miniGame.spawner);
+        UI.gameModal.start.disabled = false;
+        UI.gameModal.start.classList.remove('opacity-50');
+    }
+
+    function endMiniGame() {
+        stopMiniGame();
+        const goldReward = miniGame.score * 2;
+        const expReward = miniGame.score * 3;
+        addGold(goldReward);
+        addExp(expReward);
+        showToast(`遊戲結束！獲得 ${goldReward} 金幣 & ${expReward} 經驗！`);
+        UI.gameModal.area.innerHTML = `<div class="flex h-full items-center justify-center text-2xl font-bold text-gray-400">Time's Up!</div>`;
+    }
+
+    /**
+     * 輔助功能
+     */
+    function renderPetSelection() {
+        const grid = document.getElementById('petSelectGrid');
+        for (let key in DB.pets) {
+            const p = DB.pets[key];
+            const btn = document.createElement('button');
+            btn.className = `p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:scale-105 transition bg-gradient-to-br ${p.color}`;
+            btn.innerHTML = `<div class="text-5xl mb-2">${p.idle}</div><div class="font-bold text-gray-700">${p.name}</div>`;
+            btn.onclick = () => {
+                // 存初始檔
+                state.petId = key;
+                saveGame();
+                startGame(key);
+            };
+            grid.appendChild(btn);
+        }
+    }
+
+    function openModal(title, contentHTML) {
+        UI.modal.title.textContent = title;
+        UI.modal.content.innerHTML = contentHTML;
+        UI.modal.overlay.classList.remove('hidden');
+        UI.modal.overlay.classList.add('flex');
+    }
+
+    function closeModal() {
+        UI.modal.overlay.classList.add('hidden');
+        UI.modal.overlay.classList.remove('flex');
+    }
+
+    function showToast(msg) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        document.getElementById('toast-container').appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    function createFloatingText(text, className, targetEl = null) {
+        const el = document.createElement('div');
+        el.className = `float-text ${className}`;
+        el.textContent = text;
+        
+        // 決定位置：如果有指定目標(如小遊戲蘋果)則在目標處，否則在寵物頭上
+        if (targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const areaRect = UI.gameModal.area.getBoundingClientRect();
+            el.style.left = (rect.left - areaRect.left + 10) + 'px';
+            el.style.top = (rect.top - areaRect.top) + 'px';
+            UI.gameModal.area.appendChild(el);
+        } else {
+            el.style.left = '50%';
+            el.style.top = '40%';
+            el.style.transform = 'translate(-50%, -50%)';
+            UI.pet.floatContainer.appendChild(el);
+        }
+        
+        setTimeout(() => el.remove(), 1500);
+    }
+
+    function checkHoliday() {
+        const d = new Date();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        let decor = '';
+        if (m === 12 && day === 25) decor = '🎅';
+        else if (m === 10 && day === 31) decor = '🎃';
+        else if (m === 1 && day === 1) decor = '🧧';
+        
+        UI.pet.costume.textContent = decor;
+        if(decor && Math.random() < 0.01) showToast('節日快樂！');
+    }
+
+    // 啟動
+    init();
 
 </script>
-
 </body>
 </html>
-
